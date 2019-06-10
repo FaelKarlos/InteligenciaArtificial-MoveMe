@@ -1,23 +1,15 @@
+#Importações para o servidor funcionar
 import pandas as pd
 import numpy as np
-from flask import Flask, abort, jsonify, request
+from flask import Flask, abort, jsonify, request, Response # Biblioteca para preparar os web service
 import pickle
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn import datasets, linear_model
-from sklearn.linear_model import LinearRegression
-from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
-from sklearn import preprocessing
 from sklearn.preprocessing import OneHotEncoder
-import pickle
 import json
 
-
-x =  '{ "name":"John", "age":30, "city":"New York"}'
-y = json.loads(x)
-print(y["age"])
+#Instância do Flask para iniciar métodos do web service
 app = Flask(__name__)
 
+#Função que carrega os arquivos de dicionários e modelo salvos
 def carregaArquivos():
     # Carrega dicionário label
     labelencoder_dictArquivo = open('labelencoder_dict.sav', 'rb')
@@ -32,9 +24,10 @@ def carregaArquivos():
     modelo_carregado = pickle.load(modelo_arquivo)
     return labelencoder_dict, onehotencoder_dict, modelo_carregado
 
-#Carregando modelos e dicionários
+#Requisita função para carregar modelos e dicionários
 label_dict, onehot_dict, modelo = carregaArquivos()
 
+#Função que mapeia a entrada do usuário em formato correto para predição
 def getEncoded(test_data,labelencoder_dict,onehotencoder_dict):
     test_encoded_x = None
     for i in range(0,test_data.shape[1]):
@@ -49,10 +42,7 @@ def getEncoded(test_data,labelencoder_dict,onehotencoder_dict):
               test_encoded_x = np.concatenate((test_encoded_x, feature), axis=1)
     return test_encoded_x
 
-escolha = ['Japanese', 'Excellent', 4, 600, 4]
-
-languages = [{'name': 'isd'}, {'name':'aksdh'}]
-
+#Função que recebe a entrada do web service para classificação
 def classificaEscolha(escolhaLista, label_dict, onehot_dict, modelo_carregado):
     # Converte valores string em dataframe
     colunasCategoricasPredicao = [{'cozinha': escolhaLista[0], 'votos': escolhaLista[1]}]
@@ -67,28 +57,50 @@ def classificaEscolha(escolhaLista, label_dict, onehot_dict, modelo_carregado):
     escolha_para_predicao = np.concatenate((dicionarioCategoriasPredicaoParte1, Parte2Escolha), axis=1)
     return modelo.predict(escolha_para_predicao)
 
+#Função que publica o web service no verbo POST
+#Essa função retornada os dados do restaurante preditos para a solicitação
 @app.route('/', methods=['POST'])
 def realizarPredicao():
+    #Verifica o verbo da requisição
     if request.method == 'POST':
+        #Pega os dados da requisição do web service
         cozinha = request.form['cozinha']
         taxa_votos = request.form['taxa_votos']
         alcance_preco = request.form['alcance_preco']
         classifi_agregada = request.form['classifi_agregada']
         votos = request.form['votos']
 
-        print(cozinha, taxa_votos, alcance_preco, classifi_agregada, votos)
+        #Converte valores passadas no parâmetro para int, para ser usado no loc()
+        convertedClassifi_agregada = int(classifi_agregada)
+        convertedVotos = int(votos)
+        convertedAlcance_preco = int(alcance_preco)
+
+        #Cria lista com entradas recebidas do web service para classficação
         escolha = [cozinha, taxa_votos, alcance_preco, classifi_agregada, votos]
 
-        label_dict, onehot_dict, modelo = carregaArquivos()
+        #Realizando a classificação
         n = classificaEscolha(escolha, label_dict, onehot_dict, modelo)
+
+        predicao = [n[0]]
+
+        #Lê a base para retorna uma instância do dataframe
         base_busca = pd.read_csv('basereduzida.csv', encoding='latin-1')
 
-        retorno = base_busca.loc[(base_busca['media_preco']) > (230 - 50) & (base_busca['taxa_votos'] == 'Excellent') & (base_busca['cozinha'] == 'Japanese') & (base_busca['votos'] >= (votos - 50)) & (base_busca['alcance_preco'] >= alcance_preco)]
+        #Busca um restaurante no base reduzida
+        retorno = base_busca.loc[(base_busca['media_preco']) > (predicao[0] - 50) & (base_busca['taxa_votos'] == taxa_votos) & (base_busca['cozinha'] == cozinha) & (base_busca['votos'] >= (convertedVotos - 50)) & (base_busca['alcance_preco'] >= convertedAlcance_preco)]
 
-        print(retorno.shape)
-    return jsonify({'nome_restaurante': "Lucas"})
+        #Pega o primeiro elemento encontrado para ser retornado
+        df = retorno.loc[0]
 
-#print("Média de preço predição carregada para características buscadas: ", classificaEscolha(escolha, label_dict, onehot_dict, modelo))
+        #Cria um Response que será retornado pelo web service
+        resp = Response(response=df.to_json(),
+                        status=200,
+                        mimetype="application/json")
 
+        #Finaliza a sessão do web service e retorna os dados ao solicitante
+        print("Finalizou a requisição!")
+        return (resp)
+
+#Inicia o servidor da aplicação
 if __name__ == '__main__':
     app.run(debug=True, port=8081)
