@@ -1,3 +1,4 @@
+# -*- coding: latin-1 -*-
 #Importações para o servidor funcionar
 import pandas as pd
 import numpy as np
@@ -59,7 +60,7 @@ def classificaEscolha(escolhaLista, label_dict, onehot_dict, modelo_carregado):
 
 #Função que publica o web service no verbo POST
 #Essa função retornada os dados do restaurante preditos para a solicitação
-@app.route('/api', methods=['GET'])
+@app.route('/api', methods=['POST','GET'])
 def realizarPredicao():
     #Verifica o verbo da requisição
         print("Entrou")
