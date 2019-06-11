@@ -59,19 +59,20 @@ def classificaEscolha(escolhaLista, label_dict, onehot_dict, modelo_carregado):
 
 #Função que publica o web service no verbo POST
 #Essa função retornada os dados do restaurante preditos para a solicitação
-@app.route('/', methods=['POST'])
+@app.route('/api', methods=['GET'])
 def realizarPredicao():
     #Verifica o verbo da requisição
-    if request.method == 'POST':
+        print("Entrou")
         #Pega os dados da requisição do web service
-        cozinha = request.form['cozinha']
-        taxa_votos = request.form['taxa_votos']
-        alcance_preco = request.form['alcance_preco']
-        classifi_agregada = request.form['classifi_agregada']
-        votos = request.form['votos']
+        cozinha = request.args.get('cozinha')
+        taxa_votos = request.args.get('taxa_votos')
+        alcance_preco = request.args.get('alcance_preco')
+        classifi_agregada = request.args.get('classifi_agregada')
+        votos = request.args.get('votos')
 
+        print("Cozinha: ", cozinha)
         #Converte valores passadas no parâmetro para int, para ser usado no loc()
-        convertedClassifi_agregada = int(classifi_agregada)
+        convertedClassifi_agregada = float(classifi_agregada)
         convertedVotos = int(votos)
         convertedAlcance_preco = int(alcance_preco)
 
@@ -92,6 +93,28 @@ def realizarPredicao():
         #Pega o primeiro elemento encontrado para ser retornado
         df = retorno.loc[0]
 
+       # df.drop(['Restaurant ID'],['Country Code','Address','Locality','Locality Verbose','media_preco', 'Currency', 'Has Table booking','Has Online delivery','Is delivering now','Switch to order menu','Rating color'], inplace=True, axis=1)
+        df.drop('Restaurant ID',  inplace=True, axis=0)
+        df.drop('Country Code', inplace=True, axis=0)
+        df.drop('Address', inplace=True, axis=0)
+        df.drop('Locality', inplace=True, axis=0)
+        df.drop('Locality Verbose', inplace=True, axis=0)
+        df.drop('media_preco', inplace=True, axis=0)
+        df.drop('Currency', inplace=True, axis=0)
+        df.drop('Has Table booking', inplace=True, axis=0)
+        df.drop('Has Online delivery', inplace=True, axis=0)
+        df.drop('Is delivering now', inplace=True, axis=0)
+        df.drop('Switch to order menu', inplace=True, axis=0)
+        df.drop('Rating color', inplace=True, axis=0)
+        #
+
+        df.rename(index={
+            "Restaurant Name": "nome",
+            "City": "cidade",
+            "Longitude":"longitude",
+            "Latitude":"latitude",
+        },
+                    inplace=True)
         #Cria um Response que será retornado pelo web service
         resp = Response(response=df.to_json(),
                         status=200,
@@ -99,8 +122,9 @@ def realizarPredicao():
 
         #Finaliza a sessão do web service e retorna os dados ao solicitante
         print("Finalizou a requisição!")
+        print(resp)
         return (resp)
 
 #Inicia o servidor da aplicação
 if __name__ == '__main__':
-    app.run(debug=True, port=8081)
+    app.run(debug=True, port=8080)
