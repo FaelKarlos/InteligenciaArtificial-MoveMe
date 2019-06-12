@@ -1,4 +1,3 @@
-# -*- coding: latin-1 -*-
 #Importações para o servidor funcionar
 import pandas as pd
 import numpy as np
@@ -60,15 +59,15 @@ def classificaEscolha(escolhaLista, label_dict, onehot_dict, modelo_carregado):
 
 #Função que publica o web service no verbo POST
 #Essa função retornada os dados do restaurante preditos para a solicitação
-@app.route('/api', methods=['POST','GET'])
+@app.route('/', methods=['GET'])
 def realizarPredicao():
     #Verifica o verbo da requisição
         print("Entrou")
         #Pega os dados da requisição do web service
         cozinha = request.args.get('cozinha')
-        taxa_votos = request.args.get('taxa_votos')
-        alcance_preco = request.args.get('alcance_preco')
-        classifi_agregada = request.args.get('classifi_agregada')
+        taxa_votos = request.args.get('taxavotos')
+        alcance_preco = request.args.get('alcancepreco')
+        classifi_agregada = request.args.get('classifiagregada')
         votos = request.args.get('votos')
 
         print("Cozinha: ", cozinha)
@@ -84,12 +83,13 @@ def realizarPredicao():
         n = classificaEscolha(escolha, label_dict, onehot_dict, modelo)
 
         predicao = [n[0]]
+        print("Preco medio: ", predicao)
 
         #Lê a base para retorna uma instância do dataframe
         base_busca = pd.read_csv('basereduzida.csv', encoding='latin-1')
 
         #Busca um restaurante no base reduzida
-        retorno = base_busca.loc[(base_busca['media_preco']) > (predicao[0] - 50) & (base_busca['taxa_votos'] == taxa_votos) & (base_busca['cozinha'] == cozinha) & (base_busca['votos'] >= (convertedVotos - 50)) & (base_busca['alcance_preco'] >= convertedAlcance_preco)]
+        retorno = base_busca.loc[(base_busca['media_preco']) > (predicao[0] - 10) & (base_busca['taxa_votos'] == taxa_votos) & (base_busca['cozinha'] == cozinha) & (base_busca['votos'] >= (convertedVotos - 50)) & (base_busca['alcance_preco'] >= convertedAlcance_preco)]
 
         #Pega o primeiro elemento encontrado para ser retornado
         df = retorno.loc[0]
@@ -128,4 +128,4 @@ def realizarPredicao():
 
 #Inicia o servidor da aplicação
 if __name__ == '__main__':
-    app.run(debug=True, port=8080)
+    app.run(debug=True, port=8081)
